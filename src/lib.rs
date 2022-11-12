@@ -1,5 +1,5 @@
 
-pub fn count_sort(arr: &[u64], radix: u64, digit_mask: u64) -> Vec<u64> {
+fn count_sort(arr: &[u64], radix: u64, digit_mask: u64) -> Vec<u64> {
     let mut sorted_arr = vec![0; arr.len()]; 
     let mut count = vec![0; radix as usize]; 
     
@@ -22,9 +22,9 @@ pub fn count_sort(arr: &[u64], radix: u64, digit_mask: u64) -> Vec<u64> {
 
 }
 
-pub fn radix_sort(arr: &Vec<u32>, radix: u32) -> Vec<u32> {
-    let mut sorted_arr = Vec::clone(arr);
-    let mut digit_mask = 1;
+pub fn radix_sort(arr: &[u64], radix: u64) -> Vec<u64> {
+    let mut sorted_arr = Vec::from(arr);
+    let mut digit_mask = 1u64;
     let max = arr.into_iter().max().unwrap();
 
     while max / digit_mask > 0 {

@@ -36,7 +36,7 @@ fn parse_args(args: &[String]) -> Config {
         file: String::new(), 
         is_concurrent: false
     };
-    let mut i = 0;
+    let mut i = 1;
 
     while i < args.len() {
         match args[i].as_str() {
@@ -69,12 +69,14 @@ fn parse_args(args: &[String]) -> Config {
                 };
 
                 config.count = count;
+                i += 1;
 
-        }
+            }
 
             "-i" | "--iterations" => {
                 let iterations = &args[i + 1];
                 config.iterations = iterations.parse().unwrap_or_else(|_| panic!("[ERROR] couldn't parse '{}'", iterations));
+                i += 1;
 
             }
         
@@ -85,13 +87,14 @@ fn parse_args(args: &[String]) -> Config {
                 }
 
                 config.file = String::from(&args[i + 1]);            
+                i += 1;
             }
 
             "-C" | "--concurrent" => {
                 config.is_concurrent = true;
             }
             
-            _ => { panic!("[ERROR] Unrecognized arguments"); }
+            _ => { panic!("[ERROR] Unrecognized arguments {}", args[i]); }
         }
 
         
@@ -158,13 +161,20 @@ fn main() {
             let mut min = f64::MAX;
             let mut sum = 0f64;
 
-            for val in &durations {
-                max = f64::max(max, *val);
-                min = f64::min(min, *val);
-                sum += val;
+            let t2_1 = Instant::now();
+            //durations.iter().for_each(|v| {
+            for v in &durations{
+                max = f64::max(max, *v);
+                min = f64::min(min, *v);
+                sum += v;
             }
+            //});
 
+            let t2_2 = t2_1.elapsed();
             let avg = sum / durations.len() as f64;
+
+            println!("for_each time = {:.5}s", t2_2.as_secs_f64());
+
             print_stats(&config, min, max, avg, sigma(&durations));
         }
         _ => {}

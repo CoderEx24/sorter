@@ -29,61 +29,72 @@ struct Config {
 }
 
 fn parse_args(args: &[String]) -> Config {
-    let mut config = Config { mode: Mode::Generate, count: 1_000_000, iterations: 1000, file: String::new(), is_concurrent: false };
+    let mut config = Config { 
+        mode: Mode::Generate, 
+        count: 1_000_000, 
+        iterations: 1000, 
+        file: String::new(), 
+        is_concurrent: false
+    };
     let mut i = 0;
 
     while i < args.len() {
-        if args[i] == "-c" || args[i] == "--count" {
-            if let Mode::FromFile = config.mode {
-                panic!("[ERROR] Choose whether to generate random values or to read from file, but not both");
+        match args[i].as_str() {
+            "-c" | "--count" => {
+                if let Mode::FromFile = config.mode {
+                    panic!("[ERROR] Choose whether to generate random values or to read from file, but not both");
 
-            }
+               }
 
-            let str_count = &args[i + 1];
-            let len = str_count.len();
-            let prefix = str_count.as_bytes()[len - 1] as char;
+                let str_count = &args[i + 1];
+                let len = str_count.len();
+                let prefix = str_count.as_bytes()[len - 1] as char;
             
-            if !prefix.is_alphabetic() {
-                let count: u64 = str_count.parse().unwrap_or_else(|_| panic!("[ERROR] couldn't parse '{}'", str_count));
+                if !prefix.is_alphabetic() {
+                    let count: u64 = str_count.parse().unwrap_or_else(|_| panic!("[ERROR] couldn't parse '{}'", str_count));
+                    config.count = count;
+                    i += 1;
+                    continue;
+
+                }
+
+                let mut count  = String::from(str_count); count.truncate(len - 1);
+                let count: u64 = count.parse().unwrap_or_else(|_| panic!("[ERROR] couldn't parse '{}'", str_count));
+
+                let count = count * match prefix {
+                    'k' | 'K' => 1_000,
+                    'm' | 'M' => 1_000_000,
+                    't' | 'T' => 1_000_000_000,
+                    _ => 1
+                };
+
                 config.count = count;
-                i += 1;
-                continue;
+
+        }
+
+            "-i" | "--iterations" => {
+                let iterations = &args[i + 1];
+                config.iterations = iterations.parse().unwrap_or_else(|_| panic!("[ERROR] couldn't parse '{}'", iterations));
 
             }
-
-            let mut count  = String::from(str_count); count.truncate(len - 1);
-            let count: u64 = count.parse().unwrap_or_else(|_| panic!("[ERROR] couldn't parse '{}'", str_count));
-
-            let count = count * match prefix {
-                'k' | 'K' => 1_000,
-                'm' | 'M' => 1_000_000,
-                't' | 'T' => 1_000_000_000,
-                _ => 1
-            };
-
-            config.count = count;
-
-        }
-
-        else if args[i] == "-i" || args[i] == "--iterations" {
-            let iterations = &args[i + 1];
-            config.iterations = iterations.parse().unwrap_or_else(|_| panic!("[ERROR] couldn't parse '{}'", iterations));
-
-        }
         
-        else if args[i] == "-f" || args[i] == "--file" {
-            if let Generate = config.mode {
-                panic!("[ERROR] Choose whether to generate random values or to read from file, but not both");
+            "-f" | "--file" => {
+                if let Generate = config.mode {
+                    panic!("[ERROR] Choose whether to generate random values or to read from file, but not both");
 
+                }
+
+                config.file = String::from(&args[i + 1]);            
             }
 
-            config.file = String::from(&args[i + 1]);            
+            "-C" | "--concurrent" => {
+                config.is_concurrent = true;
+            }
+            
+            _ => { panic!("[ERROR] Unrecognized arguments"); }
         }
 
-        else if args[i] == "-C" || args[i] == "--concurrent" {
-            config.is_concurrent = true;
-        }
-
+        
         i += 1;
     }
 
@@ -112,7 +123,7 @@ fn sigma(arr: &[f64]) -> f64 {
 
     (arr.iter()
      .map(|v| (v - avg).powi(2))
-     .reduce(|a, v| a + v).unwrap() / (arr.len() as f64 - 1f64)).sqrt()
+     .reduce(|a, v| a + v).unwrap() / (arr.len() as f64)).sqrt()
 
 }
 
@@ -131,7 +142,7 @@ fn main() {
 
             for _ in 0 .. config.iterations {
                 let t1 = Instant::now();
-                lib::radix_sort(&arr, 10);
+                lib::radix_sort(&arr, 16);
                 let t2 = t1.elapsed();
 
                 durations.push(t2.as_secs_f64());
@@ -143,9 +154,9 @@ fn main() {
 
             }
             
-            let mut max: f64 = f64::MIN;
-            let mut min: f64 = f64::MAX;
-            let mut sum: f64 = 0f64;
+            let mut max = f64::MIN;
+            let mut min = f64::MAX;
+            let mut sum = 0f64;
 
             for val in &durations {
                 max = f64::max(max, *val);

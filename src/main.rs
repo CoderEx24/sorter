@@ -24,6 +24,8 @@ struct Config {
     pub mode: Mode,
     pub count: u64,
     pub iterations: u64,
+    pub radix: u64,
+    pub range: (u64, u64),
     pub file: String,
     pub is_concurrent: bool,
 }
@@ -33,6 +35,8 @@ fn parse_args(args: &[String]) -> Config {
         mode: Mode::Generate, 
         count: 1_000_000, 
         iterations: 1000, 
+        radix: 10,
+        range: (0, 1_000_000_000),
         file: String::new(), 
         is_concurrent: false
     };
@@ -93,6 +97,14 @@ fn parse_args(args: &[String]) -> Config {
             "-C" | "--concurrent" => {
                 config.is_concurrent = true;
             }
+
+            "-r" | "--radix" => {
+                let radix = &args[i + 1];
+                config.radix = radix.parse::<u64>().unwrap_or_else(
+                    |_| panic!("[ERROR] couldn't parse '{}'", radix)
+                );
+                i += 1;
+            }
             
             _ => { panic!("[ERROR] Unrecognized arguments {}", args[i]); }
         }
@@ -145,7 +157,7 @@ fn main() {
 
             for _ in 0 .. config.iterations {
                 let t1 = Instant::now();
-                lib::radix_sort(&arr, 16);
+                lib::radix_sort(&arr, config.radix);
                 let t2 = t1.elapsed();
 
                 durations.push(t2.as_secs_f64());
@@ -159,21 +171,14 @@ fn main() {
             
             let mut max = f64::MIN;
             let mut min = f64::MAX;
-            let mut sum = 0f64;
+            let sum = durations.iter().sum::<f64>();
 
-            let t2_1 = Instant::now();
-            //durations.iter().for_each(|v| {
-            for v in &durations{
+            durations.iter().for_each(|v| {
                 max = f64::max(max, *v);
                 min = f64::min(min, *v);
-                sum += v;
-            }
-            //});
+            });
 
-            let t2_2 = t2_1.elapsed();
             let avg = sum / durations.len() as f64;
-
-            println!("for_each time = {:.5}s", t2_2.as_secs_f64());
 
             print_stats(&config, min, max, avg, sigma(&durations));
         }

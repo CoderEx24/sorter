@@ -100,7 +100,7 @@ fn parse_args(args: &[String]) -> Config {
 
             "-r" | "--radix" => {
                 let radix = &args[i + 1];
-                config.radix = radix.parse::<u64>().unwrap_or_else(
+                config.radix = radix.parse().unwrap_or_else(
                     |_| panic!("[ERROR] couldn't parse '{}'", radix)
                 );
                 i += 1;
@@ -156,8 +156,9 @@ fn main() {
             }
 
             for _ in 0 .. config.iterations {
+                let rdx = (arr.iter().max().unwrap().to_owned() as f64).log2() as u64;
                 let t1 = Instant::now();
-                lib::radix_sort(&arr, config.radix);
+                sorter::radix_sort(&arr, rdx);
                 let t2 = t1.elapsed();
 
                 durations.push(t2.as_secs_f64());
@@ -171,7 +172,7 @@ fn main() {
             
             let mut max = f64::MIN;
             let mut min = f64::MAX;
-            let sum = durations.iter().sum::<f64>();
+            let sum: f64 = durations.iter().sum();
 
             durations.iter().for_each(|v| {
                 max = f64::max(max, *v);
@@ -192,7 +193,7 @@ fn main() {
     }
 
     let t1 = Instant::now();
-    let sorted_arr = lib::radix_sort(&arr, 10);
+    let sorted_arr = sorter::radix_sort(&arr, 10);
     let t2 = t1.elapsed();
 
     println!("time = {:.5}s", t2.as_secs_f64());

@@ -151,16 +151,31 @@ fn read_file(filename: &str) -> Result<Vec<u64>, &str> {
     Ok(arr)
 }
 
-fn print_stats(config: &Config, min: f64, max: f64, avg: f64, sigma: f64) {
+fn print_stats(config: &Config, 
+               min: Option<f64>, 
+               max: Option<f64>, 
+               avg: Option<f64>, 
+               sigma: Option<f64>) {
     println!("================================================================");
     println!("-------------------------Sorter---------------------------------");
     println!("Config: iterations = {}, mode = {}", config.iterations, config.mode.clone().unwrap());
     match config.mode.clone().unwrap() {
-        Mode::Generate => { println!("        count = {}", config.count); }
-        Mode::FromFile => { println!("        filename = {}", config.file); }
+        Mode::Generate => { 
+            println!("        count = {}", config.count);
+
+            println!("Results: min = {:.5}s, max = {:.5}s, avg = {:.5}s", 
+                min.unwrap(), 
+                max.unwrap(), 
+                avg.unwrap());
+            
+            println!("         \u{03c3} = {:.5}", sigma.unwrap());
+        },
+        
+        Mode::FromFile => { 
+            println!("        filename = {}", config.file);
+            println!("        time = {}", avg.unwrap());
+        }
     }
-    println!("Results: min = {:.5}s, max = {:.5}s, avg = {:.5}s", min, max, avg);
-    println!("         \u{03c3} = {:.5}", sigma);
     println!("================================================================");
 
 }
@@ -216,14 +231,20 @@ fn main() {
 
             let avg = sum / durations.len() as f64;
 
-            print_stats(&config, min, max, avg, sigma(&durations));
+            print_stats(&config,
+                        Some(min), 
+                        Some(max), 
+                        Some(avg), Some(sigma(&durations)));
         }
         Mode::FromFile => {
             let arr = read_file(&config.file[..]).expect("ERROR");
 
-            for i in arr {
-                print!("{}, ", i);
-            }
+            let t1 = Instant::now();
+            let sorted_arr = sorter::radix_sort(&arr, 10);
+            let t2 = t1.elapsed();
+
+            print_stats(&config, None, None, Some(t2.as_secs_f64()), None);
+
         }
     }
     /*

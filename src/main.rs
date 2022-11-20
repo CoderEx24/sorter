@@ -245,6 +245,13 @@ fn main() {
 
             print_stats(&config, None, None, Some(t2.as_secs_f64()), None);
 
+            fs::write(config.file + ".sorted", 
+                      sorted_arr
+                        .iter()
+                        .map(|v| format!("{}, ", v))
+                        .reduce(|a, v| format!("{}{}", a, v))
+                        .unwrap());
+
         }
     }
     /*

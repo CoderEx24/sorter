@@ -1,4 +1,4 @@
-use std::{ time::Instant, env };
+use std::{ time::Instant, env, io, fs };
 use rand::{ thread_rng, Rng };
 
 mod lib;
@@ -21,7 +21,7 @@ impl std::fmt::Display for Mode {
 }
 
 struct Config {
-    pub mode: Mode,
+    pub mode: Option<Mode>,
     pub count: u64,
     pub iterations: u64,
     pub radix: u64,
@@ -32,7 +32,7 @@ struct Config {
 
 fn parse_args(args: &[String]) -> Config {
     let mut config = Config { 
-        mode: Mode::Generate, 
+        mode: None, 
         count: 1_000_000, 
         iterations: 1000, 
         radix: 10,
@@ -45,7 +45,7 @@ fn parse_args(args: &[String]) -> Config {
     while i < args.len() {
         match args[i].as_str() {
             "-c" | "--count" => {
-                if let Mode::FromFile = config.mode {
+                if let Some(Mode::FromFile) = config.mode {
                     panic!("[ERROR] Choose whether to generate random values or to read from file, but not both");
 
                }
@@ -73,6 +73,7 @@ fn parse_args(args: &[String]) -> Config {
                 };
 
                 config.count = count;
+                config.mode = Some(Mode::Generate);
                 i += 1;
 
             }
@@ -85,12 +86,13 @@ fn parse_args(args: &[String]) -> Config {
             }
         
             "-f" | "--file" => {
-                if let Generate = config.mode {
+                if let Some(Mode::Generate) = config.mode {
                     panic!("[ERROR] Choose whether to generate random values or to read from file, but not both");
 
                 }
 
                 config.file = String::from(&args[i + 1]);            
+                config.mode = Some(Mode::FromFile);
                 i += 1;
             }
 
@@ -116,11 +118,44 @@ fn parse_args(args: &[String]) -> Config {
     config
 }
 
+/// # read_file
+/// reads a file. It expect a CSV of numbers
+/// it fails if the contents cannot be parsed of the size
+/// of the file is larger than 1GiB
+fn read_file(filename: &str) -> Result<Vec<u64>, &str> {
+    let mut arr: Vec<u64> = Vec::new();
+    let metadata = fs::metadata(filename).expect("shit");
+
+    if metadata.len() > (1 << 9) {
+        return Err("File too big");
+    }
+
+    if !metadata.is_file() {
+        return Err("Not a file");
+    }
+
+    let contents = fs::read_to_string(filename).expect("cannot read");
+
+    let mut temp: String = "".into();
+
+    for letter in String::from(contents).drain(..) {
+        if letter == ',' {
+            arr.push(temp.parse().expect("cannot parse stuff"));
+            temp = "".into();
+            continue
+        }
+
+        temp += &letter.to_string()[..];
+    }
+
+    Ok(arr)
+}
+
 fn print_stats(config: &Config, min: f64, max: f64, avg: f64, sigma: f64) {
     println!("================================================================");
     println!("-------------------------Sorter---------------------------------");
-    println!("Config: iterations = {}, mode = {}", config.iterations, config.mode);
-    match config.mode {
+    println!("Config: iterations = {}, mode = {}", config.iterations, config.mode.clone().unwrap());
+    match config.mode.clone().unwrap() {
         Mode::Generate => { println!("        count = {}", config.count); }
         Mode::FromFile => { println!("        filename = {}", config.file); }
     }
@@ -146,7 +181,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let config = parse_args(&args);
 
-    match &config.mode {
+    match &config.mode.clone().unwrap() {
         Mode::Generate => {
             let mut arr: Vec<u64> = Vec::with_capacity(config.count as usize);
             let mut durations: Vec<f64> = Vec::with_capacity(config.iterations as usize);
@@ -183,7 +218,13 @@ fn main() {
 
             print_stats(&config, min, max, avg, sigma(&durations));
         }
-        _ => {}
+        Mode::FromFile => {
+            let arr = read_file(&config.file[..]).expect("ERROR");
+
+            for i in arr {
+                print!("{}, ", i);
+            }
+        }
     }
     /*
     let mut arr: Vec<u64> = Vec::with_capacity(10_000_000);
